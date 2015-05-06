@@ -75,11 +75,11 @@ The reason you do this is because if you run those benchmarks up there, you see 
     test allocate_vec_vec_str   ... bench:      4556 ns/iter (+/- 2166)
     test recycler_vec_vec_str   ... bench:      2033 ns/iter (+/- 945)
 
-If you do les formatting stuff and just put some `u64` data in the vectors, you see an even bigger distinction:
+If you do less formatting stuff and just put some `u64` data in the vectors, you see an even bigger distinction:
 
     test allocate_vec_vec_u64   ... bench:      1281 ns/iter (+/- 303)
     test recycler_vec_vec_u64   ... bench:       154 ns/iter (+/- 27)
 
 The main down side I can think of is that you are getting vectors that may have more memory than you need. They may also live for a while in the recycler. I almost added a `clear` method, but if you want to do that just make a new one.
 
-If anyone has any hot tips or recommendations, especially about a macro or syntax extension that would let structs and such automatically derive recyclers, I'd be all ears. Or any other friendly comments or contributions. 
+If anyone has any hot tips or recommendations, especially about a macro or syntax extension that would let structs and such automatically derive recyclers, I'd be all ears. Or any other friendly comments or contributions.
