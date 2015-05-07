@@ -27,6 +27,7 @@ impl Recyclable for u64 { type DefaultRecycler = TrashRecycler<Self>; }
 impl Recyclable for i64 { type DefaultRecycler = TrashRecycler<Self>; }
 impl Recyclable for usize { type DefaultRecycler = TrashRecycler<Self>; }
 impl Recyclable for isize { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for bool { type DefaultRecycler = TrashRecycler<Self>; }
 impl Recyclable for () { type DefaultRecycler = TrashRecycler<Self>; }
 
 impl Recyclable for String {
@@ -44,6 +45,10 @@ impl<T: Recyclable> Recyclable for Option<T> {
 impl<A: Recyclable, B: Recyclable> Recyclable for (A, B) {
     type DefaultRecycler = (A::DefaultRecycler, B::DefaultRecycler);
 }
+
+// impl<K: Recyclable+Eq+Hash, V: Recyclable> Recyclable for HashMap<K, V> {
+//     type DefaultRecycler = HashMapRecycler<K::DefaultRecycler, V::DefaultRecycler>;
+// }
 
 
 // allows recycling of items
@@ -163,7 +168,7 @@ impl<R: Recycler> DerefMut for OptionRecycler<R> {
 }
 
 // // commented out due to beta-instability of .drain()
-// // recycles keys and values, then stashed the hashmap
+// // recycles keys and values, then stashes the hashmap
 // pub struct HashMapRecycler<KR: Recycler, VR: Recycler> {
 //     pub key_recycler: KR,
 //     pub val_recycler: VR,
