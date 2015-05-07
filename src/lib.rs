@@ -1,4 +1,5 @@
 use std::default::Default;
+use std::marker::PhantomData;
 
 // allows recycling of items
 pub trait Recycler : Default {
@@ -6,22 +7,24 @@ pub trait Recycler : Default {
     fn recycle(&mut self, _item: Self::Item) { }
 }
 
-// a bunch of silly primitive type recyclers
-impl Recycler for u8 { type Item = u8; }
-impl Recycler for u16 { type Item = u16; }
-impl Recycler for u32 { type Item = u32; }
-impl Recycler for u64 { type Item = u64; }
+/// A "recycler" that doesn't recycle anything, instead just dropping anything
+/// it is given. This is particularly useful for primitive types such as `i32`
+/// that do not have `Drop` implementations.
+pub struct TrashRecycler<Item> {
+    marker: PhantomData<Item>
+}
 
-impl Recycler for i8 { type Item = i8; }
-impl Recycler for i16 { type Item = i16; }
-impl Recycler for i32 { type Item = i32; }
-impl Recycler for i64 { type Item = i64; }
+impl<Item> Default for TrashRecycler<Item> {
+    fn default() -> Self {
+        TrashRecycler {
+            marker: PhantomData
+        }
+    }
+}
 
-impl Recycler for f32 { type Item = f32; }
-impl Recycler for f64 { type Item = f64; }
-
-impl Recycler for bool { type Item = bool; }
-impl Recycler for () { type Item = (); }
+impl<Item> Recycler for TrashRecycler<Item> {
+    type Item = Item;
+}
 
 // demonstrating how tuples might be recycled
 impl<R1: Recycler, R2: Recycler> Recycler for (R1, R2) {
