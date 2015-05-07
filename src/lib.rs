@@ -1,5 +1,10 @@
+// #![feature(std_misc)]
+
 use std::default::Default;
 use std::marker::PhantomData;
+
+// use std::collections::HashMap;
+// use std::hash::Hash;
 
 // allows recycling of items
 pub trait Recycler : Default {
@@ -62,7 +67,7 @@ impl StringRecycler {
 // A recycler for vectors and their contents
 pub struct VecRecycler<R: Recycler> {
     pub recycler: R,
-    pub stash:    Vec<Vec<R::Item>>,
+    pub stash: Vec<Vec<R::Item>>,
 }
 
 // recycles vec contents, then stashes the vec
@@ -91,7 +96,42 @@ impl<R: Recycler> Default for VecRecycler<R> {
     fn default() -> Self {
         VecRecycler {
             recycler: Default::default(),
-            stash:    Vec::new(),
+            stash: Vec::new(),
         }
     }
 }
+
+// // commented out due to beta-instability of .drain()
+// // recycles keys and values, then stashed the hashmap
+// pub struct HashMapRecycler<KR: Recycler, VR: Recycler> {
+//     pub key_recycler: KR,
+//     pub val_recycler: VR,
+//     pub stash: Vec<HashMap<KR::Item, VR::Item>>,
+// }
+//
+// impl<KR: Recycler, VR: Recycler> Recycler for HashMapRecycler<KR, VR> where KR::Item: Eq+Hash {
+//     type Item = HashMap<KR::Item, VR::Item>;
+//     fn recycle(&mut self, mut map: HashMap<KR::Item, VR::Item>) {
+//         for (key, val) in map.drain() {
+//             self.key_recycler.recycle(key);
+//             self.val_recycler.recycle(val);
+//         }
+//         self.stash.push(map);
+//     }
+// }
+//
+// impl<KR: Recycler, VR: Recycler> HashMapRecycler<KR, VR> where KR::Item: Eq+Hash {
+//     pub fn new(&mut self) -> (HashMap<KR::Item, VR::Item>, (&mut KR, &mut VR)) {
+//         (self.stash.pop().unwrap_or(HashMap::new()), (&mut self.key_recycler, &mut self.val_recycler))
+//     }
+// }
+//
+// impl<KR: Recycler, VR: Recycler> Default for HashMapRecycler<KR, VR> {
+//     fn default() -> Self {
+//         HashMapRecycler {
+//             key_recycler: Default::default(),
+//             val_recycler: Default::default(),
+//             stash: Vec::new(),
+//         }
+//     }
+// }
