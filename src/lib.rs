@@ -7,6 +7,45 @@ use std::ops::{Deref, DerefMut};
 // use std::collections::HashMap;
 // use std::hash::Hash;
 
+/// A value that has some default type that can recycle it.
+pub trait Recyclable {
+    type DefaultRecycler: Recycler<Item=Self>;
+}
+
+pub fn make_recycler<T: Recyclable>() -> T::DefaultRecycler {
+    Default::default()
+}
+
+// These really want default associated types. (rust-lang/rust#19476)
+impl Recyclable for u8 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for i8 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for u16 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for i16 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for u32 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for i32 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for u64 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for i64 { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for usize { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for isize { type DefaultRecycler = TrashRecycler<Self>; }
+impl Recyclable for () { type DefaultRecycler = TrashRecycler<Self>; }
+
+impl Recyclable for String {
+    type DefaultRecycler = StringRecycler;
+}
+
+impl<T: Recyclable> Recyclable for Vec<T> {
+    type DefaultRecycler = VecRecycler<T::DefaultRecycler>;
+}
+
+impl<T: Recyclable> Recyclable for Option<T> {
+    type DefaultRecycler = OptionRecycler<T::DefaultRecycler>;
+}
+
+impl<A: Recyclable, B: Recyclable> Recyclable for (A, B) {
+    type DefaultRecycler = (A::DefaultRecycler, B::DefaultRecycler);
+}
+
+
 // allows recycling of items
 pub trait Recycler : Default {
     type Item;
