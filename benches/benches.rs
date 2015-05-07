@@ -8,27 +8,10 @@ use test::Bencher;
 use recycler::*;
 
 #[bench]
-fn recycler_vec_vec_str_b(bencher: &mut Bencher) {
-    let mut r1: VecRecycler<VecRecycler<StringRecycler>> = Default::default();
-    bencher.iter(|| {
-        let v = r1.new_from(|v1, r| {
-            for _ in 0..10 {
-                v1.push(r.new_from(|v2, r| {
-                    for _ in 0..10 {
-                        v2.push(r.new_from("test!"));
-                    }
-                }));
-            }
-        });
-        r1.recycle(v);
-    });
-}
-
-#[bench]
 fn recycler_vec_vec_str(bencher: &mut Bencher) {
     let mut r1: VecRecycler<VecRecycler<StringRecycler>> = Default::default();
     bencher.iter(|| {
-        let v = {
+        let v = { // scope the borrow of r1
             let (mut v1, r2) = r1.new();
             for _ in 0..10 {
                 let (mut v2, r3) = r2.new();
@@ -57,7 +40,6 @@ fn allocate_vec_vec_str(bencher: &mut Bencher) {
         v1
     });
 }
-
 
 #[bench]
 fn recycler_vec_vec_u64(bencher: &mut Bencher) {

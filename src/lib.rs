@@ -2,6 +2,7 @@
 
 use std::default::Default;
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 
 // use std::collections::HashMap;
 // use std::hash::Hash;
@@ -67,7 +68,7 @@ impl StringRecycler {
 // A recycler for vectors and their contents
 pub struct VecRecycler<R: Recycler> {
     pub recycler: R,
-    pub stash: Vec<Vec<R::Item>>,
+    stash: Vec<Vec<R::Item>>,
 }
 
 // recycles vec contents, then stashes the vec
@@ -85,11 +86,6 @@ impl<R: Recycler> VecRecycler<R> {
     pub fn new(&mut self) -> (Vec<R::Item>, &mut R) {
         (self.stash.pop().unwrap_or(Vec::new()), &mut self.recycler)
     }
-    pub fn new_from<F: FnMut(&mut Vec<R::Item>, &mut R)>(&mut self, mut func: F) -> Vec<R::Item> {
-        let mut vec = self.stash.pop().unwrap_or(Vec::new());
-        func(&mut vec, &mut self.recycler);
-        vec
-    }
 }
 
 impl<R: Recycler> Default for VecRecycler<R> {
@@ -99,6 +95,32 @@ impl<R: Recycler> Default for VecRecycler<R> {
             stash: Vec::new(),
         }
     }
+}
+
+// option recycler
+#[derive(Default)]
+pub struct OptionRecycler<R: Recycler> {
+    pub recycler: R,
+}
+
+impl<R: Recycler> Recycler for OptionRecycler<R> {
+    type Item = Option<R::Item>;
+    fn recycle(&mut self, option: Option<R::Item>) {
+        if let Some(thing) = option {
+            self.recycler.recycle(thing);
+        }
+    }
+}
+
+// derefs to contained recycler
+impl<R: Recycler> Deref for OptionRecycler<R> {
+    type Target = R;
+    fn deref(&self) -> &Self::Target { &self.recycler }
+}
+
+// derefs to contained recycler, permits .new()
+impl<R: Recycler> DerefMut for OptionRecycler<R> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.recycler }
 }
 
 // // commented out due to beta-instability of .drain()
