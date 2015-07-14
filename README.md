@@ -85,7 +85,7 @@ If you do less formatting stuff and just put some `u64` data in the vectors, you
     test allocate_vec_vec_u64 ... bench:         267 ns/iter (+/- 49)
     test recycler_vec_vec_u64 ... bench:         145 ns/iter (+/- 26)
 
-note: a previous version of these numbers looked much better, because I used `Vec::new()` rather than `Vec::with_capacity(10)`.
+Note: a previous version of these numbers looked much better, because the `allocate` variants used `Vec::new()` rather than `Vec::with_capacity(10)`, which correctly sizes the allocation and avoids copies.
 
 The main down side is that you may get vectors that may have more memory than you need, and memory may also live for quite a while in the recycler. I almost added a `clear` method, but if you want to do that just make a new recycler and clobber the old one.
 
