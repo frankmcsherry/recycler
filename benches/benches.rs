@@ -28,15 +28,33 @@ fn recycler_vec_vec_str(bencher: &mut Bencher) {
 #[bench]
 fn allocate_vec_vec_str(bencher: &mut Bencher) {
     bencher.iter(|| {
-        let mut v1 = Vec::new();
+        let mut v1 = Vec::with_capacity(10);
         for _ in 0..10 {
-            let mut v2 = Vec::new();
+            let mut v2 = Vec::with_capacity(10);
             for _ in 0..10 {
                 v2.push(("test!").to_owned());
             }
             v1.push(v2);
         }
         v1
+    });
+}
+
+#[bench]
+fn recreate_vec_vec_str(bencher: &mut Bencher) {
+    let mut recycler = make_recycler::<Vec<Vec<String>>>();
+    let data = vec![vec!["test!".to_owned(); 10]; 10];
+    bencher.iter(|| {
+        let record = recycler.recreate(&data);
+        recycler.recycle(record);
+    });
+}
+
+#[bench]
+fn clone_vec_vec_str(bencher: &mut Bencher) {
+    let data = vec![vec!["test!".to_owned(); 10]; 10];
+    bencher.iter(|| {
+        data.clone()
     });
 }
 
@@ -62,14 +80,32 @@ fn recycler_vec_vec_u64(bencher: &mut Bencher) {
 #[bench]
 fn allocate_vec_vec_u64(bencher: &mut Bencher) {
     bencher.iter(|| {
-        let mut v1 = Vec::new();
+        let mut v1 = Vec::with_capacity(10);
         for _ in 0..10 {
-            let mut v2 = Vec::new();
+            let mut v2 = Vec::with_capacity(10);
             for _ in 0..10 {
                 v2.push(0u64);
             }
             v1.push(v2);
         }
         v1
+    });
+}
+
+#[bench]
+fn recreate_vec_vec_u64(bencher: &mut Bencher) {
+    let mut recycler = make_recycler::<Vec<Vec<u64>>>();
+    let data = vec![vec![0u64; 10]; 10];
+    bencher.iter(|| {
+        let record = recycler.recreate(&data);
+        recycler.recycle(record);
+    });
+}
+
+#[bench]
+fn clone_vec_vec_u64(bencher: &mut Bencher) {
+    let data = vec![vec![0u64; 10]; 10];
+    bencher.iter(|| {
+        data.clone()
     });
 }

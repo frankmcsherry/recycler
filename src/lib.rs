@@ -54,7 +54,8 @@ impl<A: Recyclable, B: Recyclable> Recyclable for (A, B) {
 // allows recycling of items
 pub trait Recycler : Default {
     type Item;
-    fn recycle(&mut self, _item: Self::Item) { }
+    fn recycle(&mut self, item: Self::Item);
+    fn recreate(&mut self, other: &Self::Item) -> Self::Item;
 }
 
 /// A "recycler" that doesn't recycle anything, instead just dropping anything
@@ -72,16 +73,20 @@ impl<Item> Default for TrashRecycler<Item> {
     }
 }
 
-impl<Item> Recycler for TrashRecycler<Item> {
+impl<Item: Clone> Recycler for TrashRecycler<Item> {
     type Item = Item;
+    fn recycle(&mut self, _item: Self::Item) { }
+    fn recreate(&mut self, other: &Self::Item) -> Self::Item { other.clone() }
 }
-
 // demonstrating how tuples might be recycled
 impl<R1: Recycler, R2: Recycler> Recycler for (R1, R2) {
     type Item = (R1::Item, R2::Item);
     fn recycle(&mut self, (part1, part2): (R1::Item, R2::Item)) {
         self.0.recycle(part1);
         self.1.recycle(part2);
+    }
+    fn recreate(&mut self, &(ref other1, ref other2): &(R1::Item, R2::Item)) -> (R1::Item, R2::Item) {
+        (self.0.recreate(other1), self.1.recreate(other2))
     }
 }
 
@@ -95,6 +100,9 @@ impl Recycler for StringRecycler {
     fn recycle(&mut self, mut string: String) {
         string.clear();
         self.stash.push(string);
+    }
+    fn recreate(&mut self, other: &String) -> String {
+        self.new_from(other)
     }
 }
 
@@ -123,6 +131,13 @@ impl<R: Recycler> Recycler for VecRecycler<R> {
             self.recycler.recycle(x)
         }
         self.stash.push(vec);
+    }
+    fn recreate(&mut self, other: &Vec<R::Item>) -> Vec<R::Item> {
+        let mut vec = self.stash.pop().unwrap_or(Vec::new());
+        for elem in other.iter() {
+            vec.push(self.recycler.recreate(elem));
+        }
+        vec
     }
 }
 
@@ -153,6 +168,12 @@ impl<R: Recycler> Recycler for OptionRecycler<R> {
         if let Some(thing) = option {
             self.recycler.recycle(thing);
         }
+    }
+    fn recreate(&mut self, other: &Option<R::Item>) -> Option<R::Item> {
+        if let &Some(ref thing) = other {
+            Some(self.recycler.recreate(thing))
+        }
+        else { None }
     }
 }
 
