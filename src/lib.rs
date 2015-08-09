@@ -45,11 +45,38 @@ impl<T: Recyclable> Recyclable for Option<T> {
 impl<A: Recyclable, B: Recyclable> Recyclable for (A, B) {
     type DefaultRecycler = (A::DefaultRecycler, B::DefaultRecycler);
 }
+impl<A: Recyclable, B: Recyclable, C: Recyclable> Recyclable for (A, B, C) {
+    type DefaultRecycler = (A::DefaultRecycler, B::DefaultRecycler, C::DefaultRecycler);
+}
 
 // impl<K: Recyclable+Eq+Hash, V: Recyclable> Recyclable for HashMap<K, V> {
 //     type DefaultRecycler = HashMapRecycler<K::DefaultRecycler, V::DefaultRecycler>;
 // }
 
+// demonstrating how tuples might be recycled
+impl<R1: Recycler, R2: Recycler> Recycler for (R1, R2) {
+    type Item = (R1::Item, R2::Item);
+    #[inline] fn recycle(&mut self, (part1, part2): (R1::Item, R2::Item)) {
+        self.0.recycle(part1);
+        self.1.recycle(part2);
+    }
+    #[inline] fn recreate(&mut self, &(ref other1, ref other2): &(R1::Item, R2::Item)) -> (R1::Item, R2::Item) {
+        (self.0.recreate(other1), self.1.recreate(other2))
+    }
+}
+
+// demonstrating how tuples might be recycled
+impl<R1: Recycler, R2: Recycler, R3: Recycler> Recycler for (R1, R2, R3) {
+    type Item = (R1::Item, R2::Item, R3::Item);
+    #[inline] fn recycle(&mut self, (part1, part2, part3): (R1::Item, R2::Item, R3::Item)) {
+        self.0.recycle(part1);
+        self.1.recycle(part2);
+        self.2.recycle(part3);
+    }
+    #[inline] fn recreate(&mut self, &(ref other1, ref other2, ref other3): &(R1::Item, R2::Item, R3::Item)) -> (R1::Item, R2::Item, R3::Item) {
+        (self.0.recreate(other1), self.1.recreate(other2), self.2.recreate(other3))
+    }
+}
 
 // allows recycling of items
 pub trait Recycler : Default {
@@ -75,19 +102,8 @@ impl<Item> Default for TrashRecycler<Item> {
 
 impl<Item: Clone> Recycler for TrashRecycler<Item> {
     type Item = Item;
-    fn recycle(&mut self, _item: Self::Item) { }
-    fn recreate(&mut self, other: &Self::Item) -> Self::Item { other.clone() }
-}
-// demonstrating how tuples might be recycled
-impl<R1: Recycler, R2: Recycler> Recycler for (R1, R2) {
-    type Item = (R1::Item, R2::Item);
-    fn recycle(&mut self, (part1, part2): (R1::Item, R2::Item)) {
-        self.0.recycle(part1);
-        self.1.recycle(part2);
-    }
-    fn recreate(&mut self, &(ref other1, ref other2): &(R1::Item, R2::Item)) -> (R1::Item, R2::Item) {
-        (self.0.recreate(other1), self.1.recreate(other2))
-    }
+    #[inline] fn recycle(&mut self, _item: Self::Item) { }
+    #[inline] fn recreate(&mut self, other: &Self::Item) -> Self::Item { other.clone() }
 }
 
 #[derive(Default)]
@@ -97,20 +113,20 @@ pub struct StringRecycler {
 
 impl Recycler for StringRecycler {
     type Item = String;
-    fn recycle(&mut self, mut string: String) {
+    #[inline] fn recycle(&mut self, mut string: String) {
         string.clear();
         self.stash.push(string);
     }
-    fn recreate(&mut self, other: &String) -> String {
+    #[inline] fn recreate(&mut self, other: &String) -> String {
         self.new_from(other)
     }
 }
 
 impl StringRecycler {
-    pub fn new(&mut self) -> String {
+    #[inline] pub fn new(&mut self) -> String {
         self.stash.pop().unwrap_or(String::new())
     }
-    pub fn new_from(&mut self, s: &str) -> String {
+    #[inline] pub fn new_from(&mut self, s: &str) -> String {
         let mut string = self.new();
         string.push_str(s);
         string
@@ -126,13 +142,13 @@ pub struct VecRecycler<R: Recycler> {
 // recycles vec contents, then stashes the vec
 impl<R: Recycler> Recycler for VecRecycler<R> {
     type Item = Vec<R::Item>;
-    fn recycle(&mut self, mut vec: Vec<R::Item>) {
+    #[inline] fn recycle(&mut self, mut vec: Vec<R::Item>) {
         while let Some(x) = vec.pop() {
             self.recycler.recycle(x)
         }
         self.stash.push(vec);
     }
-    fn recreate(&mut self, other: &Vec<R::Item>) -> Vec<R::Item> {
+    #[inline] fn recreate(&mut self, other: &Vec<R::Item>) -> Vec<R::Item> {
         let mut vec = self.stash.pop().unwrap_or(Vec::new());
         for elem in other.iter() {
             vec.push(self.recycler.recreate(elem));
@@ -142,7 +158,7 @@ impl<R: Recycler> Recycler for VecRecycler<R> {
 }
 
 impl<R: Recycler> VecRecycler<R> {
-    pub fn new(&mut self) -> (Vec<R::Item>, &mut R) {
+    #[inline] pub fn new(&mut self) -> (Vec<R::Item>, &mut R) {
         (self.stash.pop().unwrap_or(Vec::new()), &mut self.recycler)
     }
 }
@@ -164,12 +180,12 @@ pub struct OptionRecycler<R: Recycler> {
 
 impl<R: Recycler> Recycler for OptionRecycler<R> {
     type Item = Option<R::Item>;
-    fn recycle(&mut self, option: Option<R::Item>) {
+    #[inline] fn recycle(&mut self, option: Option<R::Item>) {
         if let Some(thing) = option {
             self.recycler.recycle(thing);
         }
     }
-    fn recreate(&mut self, other: &Option<R::Item>) -> Option<R::Item> {
+    #[inline] fn recreate(&mut self, other: &Option<R::Item>) -> Option<R::Item> {
         if let &Some(ref thing) = other {
             Some(self.recycler.recreate(thing))
         }
@@ -180,12 +196,12 @@ impl<R: Recycler> Recycler for OptionRecycler<R> {
 // derefs to contained recycler
 impl<R: Recycler> Deref for OptionRecycler<R> {
     type Target = R;
-    fn deref(&self) -> &Self::Target { &self.recycler }
+    #[inline] fn deref(&self) -> &Self::Target { &self.recycler }
 }
 
 // derefs to contained recycler, permits .new()
 impl<R: Recycler> DerefMut for OptionRecycler<R> {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.recycler }
+    #[inline] fn deref_mut(&mut self) -> &mut Self::Target { &mut self.recycler }
 }
 
 // // commented out due to beta-instability of .drain()

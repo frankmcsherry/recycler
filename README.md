@@ -10,9 +10,17 @@ pub trait Recycler : Default {
     fn recreate(&mut self, other: &Self::Item) -> Self::Item;
 }
 ```
-The default `TrashRecycler` just drops arguments to `recycle` and clones arguments to `recreate`. However, smarter recyclers for types with owned memory can deconstruct the item and stash any of its owned memory, and then use the stashed memory to recreate items. For example, the implementation for `VecRecycler<R>` does just this:
+The default `TrashRecycler` just drops arguments to `recycle` and clones arguments to `recreate`. However, smarter recyclers for types with owned memory can deconstruct the item and stash any of its owned memory, and then use the stashed memory to recreate items.
+
+For example, `VecRecycler<R>` does just this for vectors of recycleable types:
 
  ```rust
+ // A recycler for vectors and their contents
+ pub struct VecRecycler<R: Recycler> {
+     pub recycler: R,
+     stash: Vec<Vec<R::Item>>,
+ }
+
  impl<R: Recycler> Recycler for VecRecycler<R> {
      type Item = Vec<R::Item>;
      // recycles vec contents and then stashes the vec
@@ -85,13 +93,13 @@ If you do less formatting stuff and just put some `u64` data in the vectors, you
     test allocate_vec_vec_u64 ... bench:         267 ns/iter (+/- 49)
     test recycler_vec_vec_u64 ... bench:         145 ns/iter (+/- 26)
 
-Note: a previous version of these numbers looked much better, because the `allocate` variants used `Vec::new()` rather than `Vec::with_capacity(10)`, which correctly sizes the allocation and avoids copies.
-
 The main down side is that you may get vectors that may have more memory than you need, and memory may also live for quite a while in the recycler. I almost added a `clear` method, but if you want to do that just make a new recycler and clobber the old one.
+
+Note: a previous version of these numbers looked worse for the `allocate` variants because they used `Vec::new()` rather than `Vec::with_capacity(10)`, which correctly sizes the allocation and avoids copies.
 
 ## recreate
 
-If for some reason you find you are often given references to objects and need a quick clone (for example, using `decode` in [Abomonation](https://github.com/frankmcsherry/abomonation)), the `recreate` method is meant to be painless. The above benchmark becomes:
+If for some reason you find you are often given references to objects and need a quick clone (for example, using `decode` or `verify` in [Abomonation](https://github.com/frankmcsherry/abomonation)), the `recreate` method is meant to be painless. The above benchmark becomes:
 
 ```rust
 #[bench]
