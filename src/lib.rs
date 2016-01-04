@@ -8,7 +8,7 @@ use std::ops::{Deref, DerefMut};
 // use std::hash::Hash;
 
 /// A value that has some default type that can recycle it.
-pub trait Recyclable {
+pub trait Recyclable : Sized {
     type DefaultRecycler: Recycler<Item=Self>;
 }
 

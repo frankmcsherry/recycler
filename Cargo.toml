@@ -1,6 +1,6 @@
 [package]
 name = "recycler"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Frank McSherry <fmcsherry@me.com>"]
 
 description = "A small Rust library for recycling types containing owned memory"
